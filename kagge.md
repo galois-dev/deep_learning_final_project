@@ -1,0 +1,6 @@
+https://www.kaggle.com/code/anubhav012/cyclegan-monet?fbclid=IwY2xjawGVnQdleHRuA2FlbQIxMAABHVw_ZTGEklWNZQcuZT1SH2b5Xt73TxIsmEpixI6ghcgqy-qIqf3pvU5PpA_aem_sWSeYHz5CzTw3KHlpXxnyg#2.-EDA
+
+https://www.kaggle.com/code/tahmidmir/this-cyclegan-is-somwhat-of-a-painter-itself?fbclid=IwY2xjawGVnQJleHRuA2FlbQIxMAABHfGBzkp_TRjS3D-vc9Lla34JsHH5YBCqmTSyB2-cFRaRMocoWplojlKv-A_aem_P5fkirlJMy77nJoJB895VQ#CycleGAN
+
+https://www.kaggle.com/code/robinlutter/painting-with-gans?fbclid=IwY2xjawGVnStleHRuA2FlbQIxMAABHWAn13m60kIcqVDB47lgzwazw_G1PO1oZfmX4qIdU-yEyoDUxCJOs3ieHw_aem_jcXQ5GbTrY8LRMHu_f4PVA#4.-EDA-and-Data-Preprocessing
+
