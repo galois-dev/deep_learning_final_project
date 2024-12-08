@@ -1,5 +1,5 @@
 import torch
-from dataset import HorseZebraDataset
+from dataset import MonetPhotoDataset
 import sys
 from utils import save_checkpoint, load_checkpoint
 from torch.utils.data import DataLoader
@@ -10,39 +10,40 @@ from tqdm import tqdm
 from torchvision.utils import save_image
 from discriminator_model import Discriminator
 from generator_model import Generator
+import os
 
 
-def train_fn(disc_H, disc_Z, gen_Z, gen_H, loader, opt_disc, opt_gen, l1, mse, d_scaler, g_scaler):
+def train_fn(disc_photo, disc_monet, gen_monet, gen_photo, loader, opt_disc, opt_gen, l1, mse, d_scaler, g_scaler):
     
     # To get a progress bar
     loop = tqdm(loader, leave=True)
 
     # Training
-    for idx, (zebra, horse) in enumerate(loop): # since the tuple is the way it is returned in the dataset 
-        zebra = zebra.to(config.DEVICE)
-        horse = horse.to(config.DEVICE)
+    for idx, (monet, photo) in enumerate(loop): # since the tuple is the way it is returned in the dataset 
+        monet = monet.to(config.DEVICE)
+        photo = photo.to(config.DEVICE)
 
         # Train discriminators H and Z
         with torch.cuda.amp.autocast(): # necessary for Float16!!!
 
-            # Generate a fake horse
-            fake_horse = gen_H(zebra)
-            D_H_real = disc_H(horse)
-            D_H_fake = disc_H(fake_horse.detach())  # detach() ensure that we dont have to generate another fake_horse later when training generator
-            D_H_real_loss = mse(D_H_real, torch.ones_like(D_H_real)) # real = 1, fake = 0
-            D_H_fake_loss = mse(D_H_fake, torch.zeros_like(D_H_fake)) # real = 1, fake = 0
-            D_H_loss = D_H_real_loss + D_H_fake_loss    # actual loss
+            # Generate a fake photo
+            fake_photo = gen_photo(monet)
+            D_photo_real = disc_photo(photo)
+            D_photo_fake = disc_photo(fake_photo.detach())  # detach() ensure that we dont have to generate another fake_photo later when training generator
+            D_photo_real_loss = mse(D_photo_real, torch.ones_like(D_photo_real)) # real = 1, fake = 0
+            D_photo_fake_loss = mse(D_photo_fake, torch.zeros_like(D_photo_fake)) # real = 1, fake = 0
+            D_photo_loss = D_photo_real_loss + D_photo_fake_loss    # actual loss
 
-            # Generate a fake zebra
-            fake_zebra = gen_Z(horse)
-            D_Z_real = disc_Z(zebra)
-            D_Z_fake = disc_Z(fake_zebra.detach())  # detach() ensure that we dont have to generate another fake_zebra later when training generator
-            D_Z_real_loss = mse(D_Z_real, torch.ones_like(D_Z_real)) # real = 1, fake = 0
-            D_Z_fake_loss = mse(D_Z_fake, torch.zeros_like(D_Z_fake)) # real = 1, fake = 0
-            D_Z_loss = D_Z_real_loss + D_Z_fake_loss    # actual loss
+            # Generate a fake monet
+            fake_monet = gen_monet(photo)
+            D_monet_real = disc_monet(monet)
+            D_monet_fake = disc_monet(fake_monet.detach())  # detach() ensure that we dont have to generate another fake_monet later when training generator
+            D_monet_real_loss = mse(D_monet_real, torch.ones_like(D_monet_real)) # real = 1, fake = 0
+            D_monet_fake_loss = mse(D_monet_fake, torch.zeros_like(D_monet_fake)) # real = 1, fake = 0
+            D_monet_loss = D_monet_real_loss + D_monet_fake_loss    # actual loss
 
             # Total loss
-            D_loss = (D_H_loss + D_Z_loss)/2    # not sure why dividing by 2
+            D_loss = (D_photo_loss + D_monet_loss)/2    # not sure why dividing by 2
         
         # Update discriminators in the right direction
         opt_disc.zero_grad()
@@ -53,34 +54,34 @@ def train_fn(disc_H, disc_Z, gen_Z, gen_H, loader, opt_disc, opt_gen, l1, mse, d
 
         # Train generators H and Z
         with torch.cuda.amp.autocast():
-            D_H_fake = disc_H(fake_horse)
-            D_Z_fake = disc_Z(fake_zebra)
+            D_photo_fake = disc_photo(fake_photo)
+            D_monet_fake = disc_monet(fake_monet)
 
             # To "fool" the discriminator... 
             ## Adversarial loss for both generators
-            loss_G_H = mse(D_H_fake, torch.ones_like(D_H_fake))
-            loss_G_Z = mse(D_Z_fake, torch.ones_like(D_Z_fake)) # fake = 0, real = 1 => only ones_like since we want to fool the discriminator into thinking it's real!
+            loss_G_photo = mse(D_photo_fake, torch.ones_like(D_photo_fake))
+            loss_G_monet = mse(D_monet_fake, torch.ones_like(D_monet_fake)) # fake = 0, real = 1 => only ones_like since we want to fool the discriminator into thinking it's real!
 
             ## Cycle loss for both generators
-            cycle_zebra = gen_Z(fake_horse)  # trying to generate a zebra using a fake horse => should HOPEFULLY give back og zebra
-            cycle_horse = gen_H(fake_zebra) # similarly, should HOPEFULLY give back og horse from generated zebra
-            cycle_zebra_loss = l1(zebra, cycle_zebra)
-            cycle_horse_loss = l1(horse, cycle_horse)
+            cycle_monet = gen_monet(fake_photo)  # trying to generate a monet using a fake photo => should HOPEFULLY give back og monet
+            cycle_photo = gen_photo(fake_monet) # similarly, should HOPEFULLY give back og photo from generated monet
+            cycle_monet_loss = l1(monet, cycle_monet)
+            cycle_photo_loss = l1(photo, cycle_photo)
 
             ## Idenitity loss for both generators
-            # identity_zebra = gen_Z(zebra)   # this is if we send in a zebra to the one that should already generate a zebra
-            # identity_horse = gen_H(horse)
-            # identity_zebra_loss = l1(zebra, identity_zebra) # CAN BE REMOVED! unnecessary since LAMDA_IDENTITY = 0 in config
-            # identity_horse_loss = l1(horse, identity_horse) # CAN BE REMOVED! unnecessary since LAMDA_IDENTITY = 0 in config
+            # identity_monet = gen_monet(monet)   # this is if we send in a monet to the one that should already generate a monet
+            # identity_photo = gen_photo(photo)
+            # identity_monet_loss = l1(monet, identity_monet) # CAN BE REMOVED! unnecessary since LAMDA_IDENTITY = 0 in config
+            # identity_photo_loss = l1(photo, identity_photo) # CAN BE REMOVED! unnecessary since LAMDA_IDENTITY = 0 in config
 
             ## Add all losses
             G_loss = (
-                loss_G_Z
-                + loss_G_H
-                + cycle_zebra_loss * config.LAMBDA_CYCLE
-                + cycle_horse_loss * config.LAMBDA_CYCLE
-                # + identity_horse_loss * config.LAMBDA_IDENTITY
-                # + identity_zebra_loss * config.LAMBDA_IDENTITY
+                loss_G_monet
+                + loss_G_photo
+                + cycle_monet_loss * config.LAMBDA_CYCLE
+                + cycle_photo_loss * config.LAMBDA_CYCLE
+                # + identity_photo_loss * config.LAMBDA_IDENTITY
+                # + identity_monet_loss * config.LAMBDA_IDENTITY
             )
         
         # Update generators in the right direction
@@ -91,26 +92,26 @@ def train_fn(disc_H, disc_Z, gen_Z, gen_H, loader, opt_disc, opt_gen, l1, mse, d
 
         # Show image
         if idx % 200 == 0:
-            save_image(fake_horse*0.5 + 0.5, f'saved_images/horse_{idx}.png')    # the 0.5 is to emulate the inverse of the normalization to get the correct coloring
-            save_image(fake_zebra*0.5 + 0.5, f'saved_images/zebra_{idx}.png')
+            save_image(fake_photo*0.5 + 0.5, f'saved_images/photo_{idx}.png')    # the 0.5 is to emulate the inverse of the normalization to get the correct coloring
+            save_image(fake_monet*0.5 + 0.5, f'saved_images/monet_{idx}.png')
 
 
 def main():
 
     # Initialize discriminator
-    disc_H = Discriminator(in_channels=3).to(config.DEVICE)
-    disc_Z = Discriminator(in_channels=3).to(config.DEVICE)
+    disc_photo = Discriminator(in_channels=3).to(config.DEVICE)
+    disc_monet = Discriminator(in_channels=3).to(config.DEVICE)
     opt_disc = optim.Adam(
-        list(disc_H.parameters()) + list(disc_Z.parameters()),
+        list(disc_photo.parameters()) + list(disc_monet.parameters()),
         lr=config.LEARNING_RATE,
         betas=(0.5, 0.999),
     )
 
     # Initialize generator
-    gen_Z = Generator(img_channels=3, num_residuals=9).to(config.DEVICE)    # H -> Z
-    gen_H = Generator(img_channels=3, num_residuals=9).to(config.DEVICE)    # Z -> H
+    gen_monet = Generator(img_channels=3, num_residuals=9).to(config.DEVICE)    # H -> Z
+    gen_photo = Generator(img_channels=3, num_residuals=9).to(config.DEVICE)    # Z -> H
     opt_gen = optim.Adam(
-        list(gen_Z.parameters()) + list(gen_H.parameters()),
+        list(gen_monet.parameters()) + list(gen_photo.parameters()),
         lr=config.LEARNING_RATE,
         betas=(0.5, 0.999),
     )
@@ -124,50 +125,51 @@ def main():
     # Check if we should load a checkpoint, then load both generators and discriminators (critic)
     if config.LOAD_MODEL:
         load_checkpoint(
-            config.CHECKPOINT_GEN_H,
-            gen_H,
+            config.CHECKPOINT_GEN_PHOTO,
+            gen_photo,
             opt_gen,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            config.CHECKPOINT_GEN_Z,
-            gen_Z,
+            config.CHECKPOINT_GEN_MONET,
+            gen_monet,
             opt_gen,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            config.CHECKPOINT_CRITIC_H,
-            disc_H,
+            config.CHECKPOINT_CRITIC_PHOTO,
+            disc_photo,
             opt_disc,
             config.LEARNING_RATE,
         )
         load_checkpoint(
-            config.CHECKPOINT_CRITIC_Z,
-            disc_Z,
+            config.CHECKPOINT_CRITIC_MONET,
+            disc_monet,
             opt_disc,
             config.LEARNING_RATE,
         )
 
     # Create datasets
-    dataset = HorseZebraDataset(
-        root_horse=config.TRAIN_DIR + "/horses",
-        root_zebra=config.TRAIN_DIR + "/zebras",
+    dataset = MonetPhotoDataset(
+        root_photo=config.TRAIN_DIR + "/photo_jpg",
+        root_monet=config.TRAIN_DIR + "/monet_jpg",
         transform=config.transforms,
     )
-    ## To evaluate model, load val
-    val_dataset = HorseZebraDataset(
-        root_horse="cyclegan_test/horse1",
-        root_zebra="cyclegan_test/zebra1",
-        transform=config.transforms,
-    )
+    # ## To evaluate model, load val
+    # val_dataset = MonetPhotoDataset(
+    #     root_photo="cyclegan_test/photo1",
+    #     root_monet="cyclegan_test/monet1",
+    #     transform=config.transforms,
+    # )
 
-    # Load datasets
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=1,
-        shuffle=False,
-        pin_memory=True,
-    )
+    # # Load datasets
+    # val_loader = DataLoader(
+    #     val_dataset,
+    #     batch_size=1,
+    #     shuffle=False,
+    #     pin_memory=True,
+    # )
+    
     loader = DataLoader(
         dataset,
         batch_size=config.BATCH_SIZE,
@@ -183,10 +185,10 @@ def main():
     # Train
     for epoch in range(config.NUM_EPOCHS):
         train_fn(
-            disc_H,
-            disc_Z,
-            gen_Z,
-            gen_H,
+            disc_photo,
+            disc_monet,
+            gen_monet,
+            gen_photo,
             loader,
             opt_disc,
             opt_gen,
@@ -198,10 +200,10 @@ def main():
 
         # At each epoch, save generators and discriminators under a checkpoint
         if config.SAVE_MODEL:
-            save_checkpoint(gen_H, opt_gen, filename=config.CHECKPOINT_GEN_H)
-            save_checkpoint(gen_Z, opt_gen, filename=config.CHECKPOINT_GEN_Z)
-            save_checkpoint(disc_H, opt_disc, filename=config.CHECKPOINT_CRITIC_H)
-            save_checkpoint(disc_Z, opt_disc, filename=config.CHECKPOINT_CRITIC_Z)
+            save_checkpoint(gen_photo, opt_gen, filename=config.CHECKPOINT_GEN_PHOTO)
+            save_checkpoint(gen_monet, opt_gen, filename=config.CHECKPOINT_GEN_MONET)
+            save_checkpoint(disc_photo, opt_disc, filename=config.CHECKPOINT_CRITIC_PHOTO)
+            save_checkpoint(disc_monet, opt_disc, filename=config.CHECKPOINT_CRITIC_MONET)
 
 if __name__=='__main__':
     main()

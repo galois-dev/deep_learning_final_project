@@ -7,25 +7,25 @@ from torch.utils.data import Dataset
 import numpy as np
 
 
-class HorseZebraDataset(Dataset):
+class MonetPhotoDataset(Dataset):
     
-    def __init__(self, root_zebra, root_horse, transform=None):
+    def __init__(self, root_monet, root_photo, transform=None):
         super().__init__()
 
         # Path to directories
-        self.root_zebra = root_zebra
-        self.root_horse = root_horse
+        self.root_monet = root_monet
+        self.root_photo = root_photo
         self.transform = transform
 
         # List images in the directories
-        self.zebra_images = os.listdir(root_zebra)
-        self.horse_images = os.listdir(root_horse)
+        self.monet_images = os.listdir(root_monet)
+        self.photo_images = os.listdir(root_photo)
 
         # Check length of dataset => imp because the two datasets are not of the same size!!!
-        self.length_dataset = max(len(self.zebra_images), len(self.horse_images))
+        self.length_dataset = max(len(self.monet_images), len(self.photo_images))
 
-        self.zebra_len = len(self.zebra_images)
-        self.horse_len = len(self.horse_images)
+        self.monet_len = len(self.monet_images)
+        self.photo_len = len(self.photo_images)
 
     
     def __len__(self):
@@ -35,27 +35,27 @@ class HorseZebraDataset(Dataset):
 
         # Index can be greater than the dataset => modulus ensures correct range
         ## Potential flaw of the modulus - some examples might be shown more often than others
-        zebra_img = self.zebra_images[index % self.zebra_len]   # just the jpeg file
-        horse_img = self.horse_images[index % self.horse_len]
+        monet_img = self.monet_images[index % self.monet_len]   # just the jpeg file
+        photo_img = self.photo_images[index % self.photo_len]
 
         # To load jpeg file, define img path
-        zebra_path = os.path.join(self.root_zebra, zebra_img)
-        horse_path = os.path.join(self.root_horse, horse_img)
+        monet_path = os.path.join(self.root_monet, monet_img)
+        photo_path = os.path.join(self.root_photo, photo_img)
 
         # Convert images to PIL images or numpy arrays (if using albumentations)
-        zebra_img = np.array(Image.open(zebra_path).convert('RGB')) # convert to RGB is a safety measure in case some images are grayscale
-        horse_img = np.array(Image.open(horse_path).convert('RGB'))
+        monet_img = np.array(Image.open(monet_path).convert('RGB')) # convert to RGB is a safety measure in case some images are grayscale
+        photo_img = np.array(Image.open(photo_path).convert('RGB'))
 
         if self.transform:
 
-            # Ensure that we are performing the same transformations for zebra and horse
+            # Ensure that we are performing the same transformations for monet and photo
             ## image0 because it is defined as so in config.py
-            aumentations = self.transform(image=zebra_img, image0=horse_img)
+            augmentations = self.transform(image=monet_img, image0=photo_img)
 
-            zebra_img = aumentations['image']
-            horse_img = aumentations['image0']
+            monet_img = augmentations['image']
+            photo_img = augmentations['image0']
         
-        return zebra_img, horse_img
+        return monet_img, photo_img
     
 
 
