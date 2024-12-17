@@ -3,7 +3,7 @@ from torch import nn
 from itertools import chain
 from tqdm import tqdm
 from torch.cuda.amp import autocast, GradScaler
-from utils.Block import Generator, Discriminator
+from utils.Architecture import Generator, Discriminator
 
 class Model(torch.nn.Module):
     def __init__(self, epochs, device, cycle_lambda = 10, Learning_rate=2e-4):
