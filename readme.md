@@ -12,8 +12,7 @@ This project uses CycleGANs to perform artistic style transfer, transforming rea
 We tackle key challenges like checkerboard artifacts and limitations in traditional GAN structures to ensure high-quality results.
 
 ## Code Structure
-- `main.ipynb`: Dataset overview, training and testing the model.
+- `main.ipynb`: Dataset overview, CycleGAN model and training & testing.
 - `utils/Dataloader.py`: Loads and preprocesses the dataset.
 - `utils/Architecture`: Contains the generator and discriminator architectures.
-- `utils/Model.py`: Implements the CycleGAN model.
 - `utils/FixedConv.py`, `utils/WeightNormalization`: Contains classes for model improvements.
