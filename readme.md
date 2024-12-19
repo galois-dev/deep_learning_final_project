@@ -11,8 +11,5 @@
 This project uses CycleGANs to perform artistic style transfer, transforming real-world photographs into Monet-style paintings without the need for paired datasets
 We tackle key challenges like checkerboard artifacts and limitations in traditional GAN structures to ensure high-quality results.
 
-## Code Structure
-- `main.ipynb`: Dataset overview, CycleGAN model and training & testing.
-- `utils/Dataloader.py`: Loads and preprocesses the dataset.
-- `utils/Architecture`: Contains the generator and discriminator architectures.
-- `utils/FixedConv.py`, `utils/WeightNormalization`: Contains classes for model improvements.
+## Data 
+[Kaggle](https://www.kaggle.com/competitions/gan-getting-started) **I’m Something of a Painter Myself** competition
